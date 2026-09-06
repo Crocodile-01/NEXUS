@@ -1,10 +1,14 @@
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.entity import EntityAlias
 
 
 class Entity(Base):
@@ -30,9 +34,9 @@ class Entity(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
+    # Relationships with eager selectin loading for async sessions
     aliases: Mapped[list["EntityAlias"]] = relationship(
-        "EntityAlias", back_populates="entity", cascade="all, delete-orphan"
+        "EntityAlias", back_populates="entity", cascade="all, delete-orphan", lazy="selectin"
     )
 
 

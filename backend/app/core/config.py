@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     # Security / CORS
     CORS_ORIGINS: list[str] = ["*"]
 
+    # HTTP Client / Source Adapter Settings
+    USER_AGENT: str = "NEXUS-OSINT-Platform/0.1.0 (https://github.com/Crocodile-01/NEXUS)"
+    REQUEST_TIMEOUT_SECONDS: int = 15
+    MAX_ADAPTER_RETRIES: int = 2
+
+    # Optional API Keys
+    SEMANTIC_SCHOLAR_API_KEY: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
