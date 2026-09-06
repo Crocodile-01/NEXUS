@@ -1,14 +1,22 @@
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app
-
-client = TestClient(app)
+from httpx import AsyncClient
 
 
-def test_health_check():
-    response = client.get("/health")
+@pytest.mark.asyncio
+async def test_root_health_check(async_client: AsyncClient):
+    response = await async_client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
     assert data["service"] == "nexus"
     assert data["version"] == "0.1.0"
+    assert data["mode"] == "PASSIVE_PUBLIC"
+
+
+@pytest.mark.asyncio
+async def test_api_v1_health_check(async_client: AsyncClient):
+    response = await async_client.get("/api/v1/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["service"] == "nexus"
