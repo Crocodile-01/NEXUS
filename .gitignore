@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.venv
+env/
+*.env
+.env
+
+# FastAPI / Testing / IDE
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+.idea/
+
+# Database / Storage
+*.sqlite3
+*.db
+
+# Node / Frontend (Future)
+node_modules/
+dist/
+.next/
+
+# OS specific
+Thumbs.db
+Desktop.ini
+.DS_Store
