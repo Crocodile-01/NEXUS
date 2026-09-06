@@ -88,6 +88,13 @@ async def persist_source_result(
         resolved_entity_map[ext_ent.name.strip().lower()] = resolved_ent
 
     # 4. Persist Relationships
+    # Build a URL→Evidence index so each relationship can be linked to the
+    # evidence item whose URL most directly supports it, rather than
+    # arbitrarily using the first item in the batch.
+    url_to_evidence: dict[str, Evidence] = {
+        ev.url: ev for ev in persisted_evidences if ev.url
+    }
+
     for rel in result.relationships:
         src_name = rel.source_entity.strip().lower()
         tgt_name = rel.target_entity.strip().lower()
@@ -115,15 +122,32 @@ async def persist_source_result(
         existing_rel = (await db.execute(rel_stmt)).scalar_one_or_none()
 
         if not existing_rel:
-            assoc_ev_id = persisted_evidences[0].id if persisted_evidences else None
+            # Deterministic evidence association:
+            # 1. If all evidence has the same URL (single-source result), use it.
+            # 2. Otherwise try to match by the relationship's source_entity name
+            #    against known evidence URLs (best effort, no false matches).
+            # 3. Fall back to None rather than a silently wrong association.
+            assoc_ev: Evidence | None = None
+            if len(persisted_evidences) == 1:
+                assoc_ev = persisted_evidences[0]
+            elif url_to_evidence:
+                # Try exact URL match on any evidence whose URL contains the
+                # source entity name as a hint (e.g. domain-based evidence).
+                src_hint = rel.source_entity.strip().lower()
+                for url, ev in url_to_evidence.items():
+                    if src_hint in url.lower():
+                        assoc_ev = ev
+                        break
+
             db_rel = Relationship(
                 source_entity_id=src_ent.id,
                 target_entity_id=tgt_ent.id,
                 relationship_type=rel.relationship_type,
                 confidence_score=rel.confidence,
-                evidence_id=assoc_ev_id,
+                evidence_id=assoc_ev.id if assoc_ev else None,
             )
             db.add(db_rel)
 
     await db.commit()
     return persisted_evidences
+
