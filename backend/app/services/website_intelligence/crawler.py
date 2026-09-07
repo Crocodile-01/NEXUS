@@ -30,6 +30,10 @@ HIGH_VALUE_KEYWORDS: tuple[str, ...] = (
 )
 
 
+MAX_RESPONSE_BYTES: int = 5 * 1024 * 1024  # 5 MB maximum response body size
+MAX_CRAWL_PAGES: int = 10
+
+
 @dataclass
 class CrawledPage:
     """Representation of an ingested and processed webpage."""
@@ -73,6 +77,9 @@ class WebsiteCrawler:
         """
         Execute bounded crawl starting from target_url.
         """
+        # Enforce bounded page count limit
+        effective_max_pages = min(max(1, max_pages), MAX_CRAWL_PAGES)
+
         start_url = self.normalize_url(target_url)
         if not validate_url(start_url, allow_private=scope.allows_private_ip()):
             raise ValueError(f"Target URL '{start_url}' failed security or SSRF validation.")
@@ -91,14 +98,14 @@ class WebsiteCrawler:
         crawled_pages.append(homepage)
         visited_urls.add(self._canonicalize_url(start_url))
 
-        if max_pages <= 1 or not homepage.internal_links:
+        if effective_max_pages <= 1 or not homepage.internal_links:
             return crawled_pages
 
         # 2. Prioritize High-Value Internal Links
         candidate_links = self._prioritize_links(homepage.internal_links, base_domain)
 
         for link in candidate_links:
-            if len(crawled_pages) >= max_pages:
+            if len(crawled_pages) >= effective_max_pages:
                 break
             canonical = self._canonicalize_url(link)
             if canonical in visited_urls:
@@ -112,12 +119,24 @@ class WebsiteCrawler:
         return crawled_pages
 
     async def _fetch_page(self, url: str) -> CrawledPage | None:
-        """Safely fetch a single URL using NEXUS safe HTTP client."""
+        """Safely fetch a single URL using NEXUS safe HTTP client with size limits."""
         try:
             async with get_safe_client(timeout_seconds=self.timeout_seconds) as client:
                 response = await client.get(url)
                 response.raise_for_status()
-                html = response.text
+
+                # Enforce response body size limit
+                content_length = response.headers.get("content-length")
+                if content_length and int(content_length) > MAX_RESPONSE_BYTES:
+                    logger.warning(
+                        "Skipping '%s': Content-Length %s exceeds limit %d bytes",
+                        url,
+                        content_length,
+                        MAX_RESPONSE_BYTES,
+                    )
+                    return None
+
+                html = response.text[:MAX_RESPONSE_BYTES]
                 status_code = response.status_code
                 headers = dict(response.headers)
         except Exception as exc:  # noqa: BLE001

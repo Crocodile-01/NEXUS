@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -18,6 +19,7 @@ from app.services.website_intelligence.enricher import WebsiteEnricher
 from app.services.website_intelligence.extractor import WebsiteEntityExtractor
 from app.services.website_intelligence.report import ReportBuilder
 from app.services.website_intelligence.schemas import (
+    InvestigationTimings,
     WebsiteIntelligenceReport,
     WebsiteInvestigationResponse,
 )
@@ -48,21 +50,28 @@ class WebsiteIntelligenceService:
         Execute bounded website intelligence workflow:
           TARGET -> VALIDATE -> FETCH -> EXTRACT -> ANALYZE -> ENRICH -> VERIFY -> REPORT
         """
+        t0 = time.perf_counter()
+
         # 1. Target Validation & Normalization
         clean_target = target.strip()
         if not clean_target.startswith(("http://", "https://")):
             clean_target = f"https://{clean_target}"
 
         if not validate_url(clean_target, allow_private=scope.allows_private_ip()):
-            raise ValueError(f"Target '{target}' failed security / SSRF validation policy.")
+            raise ValueError(
+                f"Target '{target}' failed security / SSRF validation policy. Only valid public HTTP/HTTPS URLs are allowed."
+            )
 
         parsed_url = urlparse(clean_target)
         canonical_domain = parsed_url.netloc.lower()
         canonical_domain = canonical_domain.removeprefix("www.")
 
         if not validate_domain(canonical_domain):
-            raise ValueError(f"Domain '{canonical_domain}' is not a valid FQDN domain name.")
+            raise ValueError(
+                f"Domain '{canonical_domain}' is not a valid fully-qualified domain name (FQDN)."
+            )
 
+        validation_ms = round((time.perf_counter() - t0) * 1000, 2)
         investigation_id = str(uuid.uuid4())
 
         # 2. Database Investigation Setup (if session provided)
@@ -81,6 +90,7 @@ class WebsiteIntelligenceService:
             await db.refresh(db_inv)
 
         # 3. Phase 1: Bounded Web Crawl & Content Extraction
+        t_crawl_start = time.perf_counter()
         crawl_task_id = str(uuid.uuid4())
         if db:
             crawl_task = InvestigationTask(
@@ -101,11 +111,17 @@ class WebsiteIntelligenceService:
             max_pages=max_pages,
             scope=scope,
         )
+        crawl_ms = round((time.perf_counter() - t_crawl_start) * 1000, 2)
 
         # Handle crawl failure / unreachable target
         if not crawled_pages or not any(p.extracted_text for p in crawled_pages):
+            total_failed_ms = round((time.perf_counter() - t0) * 1000, 2)
             if db:
-                await cls._mark_task_failed(db, crawl_task_id, "Target unreachable or no readable content extracted")
+                await cls._mark_task_failed(
+                    db,
+                    crawl_task_id,
+                    f"Target '{clean_target}' is unreachable or returned no readable text content.",
+                )
                 if db_inv:
                     db_inv.status = "failed"
                     await db.commit()
@@ -129,10 +145,18 @@ class WebsiteIntelligenceService:
                 evidence_count=0,
                 entities_count=0,
                 relationships_count=0,
+                timings=InvestigationTimings(
+                    target_validation_ms=validation_ms,
+                    crawl_ms=crawl_ms,
+                    extraction_ms=0.0,
+                    enrichment_ms=0.0,
+                    total_ms=total_failed_ms,
+                ),
                 report=empty_report,
             )
 
-        # 4. Phase 2: Passive Technology Detection
+        # 4. Phase 2: Passive Technology Detection & Extraction
+        t_extract_start = time.perf_counter()
         from app.services.website_intelligence.tech_detector import TechDetector
 
         detected_technologies = TechDetector.detect_technologies(crawled_pages)
@@ -142,6 +166,7 @@ class WebsiteIntelligenceService:
         entities, products, relationships = WebsiteEntityExtractor.extract_entities_and_relationships(
             crawled_pages, org_profile
         )
+        extraction_ms = round((time.perf_counter() - t_extract_start) * 1000, 2)
 
         # Ingest into Evidence Engine
         source_result = WebsiteEntityExtractor.to_source_result(
@@ -153,14 +178,21 @@ class WebsiteIntelligenceService:
                 await cls._mark_task_completed(
                     db,
                     crawl_task_id,
-                    {"pages_crawled": len(crawled_pages), "entities_extracted": len(entities)},
+                    {
+                        "pages_crawled": len(crawled_pages),
+                        "entities_extracted": len(entities),
+                        "crawl_ms": crawl_ms,
+                        "extraction_ms": extraction_ms,
+                    },
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.error("Evidence persistence error: %s", exc)
 
         # 6. Phase 4: Public OSINT Enrichment
         enrichment_data: dict = {}
+        enrichment_ms = 0.0
         if enrich:
+            t_enrich_start = time.perf_counter()
             enrich_task_id = str(uuid.uuid4())
             if db:
                 enrich_task = InvestigationTask(
@@ -184,12 +216,16 @@ class WebsiteIntelligenceService:
                 db=db,
                 task_id=enrich_task_id if db else None,
             )
+            enrichment_ms = round((time.perf_counter() - t_enrich_start) * 1000, 2)
 
             if db:
                 await cls._mark_task_completed(
                     db,
                     enrich_task_id,
-                    {"sources_consulted": enrichment_data.get("sources_consulted", [])},
+                    {
+                        "sources_consulted": enrichment_data.get("sources_consulted", []),
+                        "enrichment_ms": enrichment_ms,
+                    },
                 )
 
         # 7. Phase 5: Report Synthesis & Confidence Verification
@@ -209,7 +245,6 @@ class WebsiteIntelligenceService:
         # 8. Persist Findings & AgentRun in DB
         if db:
             try:
-                # Add findings to findings table
                 for f in report.findings:
                     db_finding = Finding(
                         investigation_id=investigation_id,
@@ -220,7 +255,6 @@ class WebsiteIntelligenceService:
                     )
                     db.add(db_finding)
 
-                # Add AgentRun record
                 agent_run = AgentRun(
                     investigation_id=investigation_id,
                     agent_role="WebsiteResearchManager",
@@ -230,7 +264,6 @@ class WebsiteIntelligenceService:
                 )
                 db.add(agent_run)
 
-                # Mark investigation completed
                 if db_inv:
                     db_inv.status = "completed"
 
@@ -238,6 +271,7 @@ class WebsiteIntelligenceService:
             except Exception as exc:  # noqa: BLE001
                 logger.error("DB commit error for findings/agent_run: %s", exc)
 
+        total_ms = round((time.perf_counter() - t0) * 1000, 2)
         tasks_count = 2 if enrich else 1
         return WebsiteInvestigationResponse(
             investigation_id=investigation_id,
@@ -249,6 +283,13 @@ class WebsiteIntelligenceService:
             evidence_count=len(crawled_pages),
             entities_count=len(report.people_and_organizations),
             relationships_count=len(report.relationships),
+            timings=InvestigationTimings(
+                target_validation_ms=validation_ms,
+                crawl_ms=crawl_ms,
+                extraction_ms=extraction_ms,
+                enrichment_ms=enrichment_ms,
+                total_ms=total_ms,
+            ),
             report=report,
         )
 

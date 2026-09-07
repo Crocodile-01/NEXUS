@@ -338,3 +338,42 @@ async def test_enrichment_failure_graceful_degradation(test_db_session: AsyncSes
         assert response.status == "completed"
         assert response.report.organization_profile.name == "Resilient Systems"
         assert len(response.report.findings) >= 1
+
+
+@pytest.mark.asyncio
+async def test_demo_page_endpoint(async_client: AsyncClient):
+    """Verify that GET /demo serves the standalone interactive HTML UI."""
+    resp = await async_client.get("/demo")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers.get("content-type", "")
+    assert "NEXUS" in resp.text
+    assert "Website Intelligence" in resp.text
+    assert "runInvestigation" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_investigation_timings_recorded(test_db_session: AsyncSession):
+    """Verify that execution timings are recorded for each phase and included in response."""
+    mock_crawled_pages = [
+        CrawledPage(
+            url="https://timed-test.org",
+            status_code=200,
+            title="Timed Test Org",
+            extracted_text="Timed Test Org provides benchmark analytics.",
+        )
+    ]
+
+    with patch("app.services.website_intelligence.crawler.WebsiteCrawler.crawl", new_callable=AsyncMock) as mock_crawl:
+        mock_crawl.return_value = mock_crawled_pages
+
+        response = await WebsiteIntelligenceService.investigate_website(
+            target="https://timed-test.org",
+            enrich=False,
+            db=test_db_session,
+        )
+        assert response.status == "completed"
+        assert response.timings is not None
+        assert response.timings.target_validation_ms >= 0.0
+        assert response.timings.crawl_ms >= 0.0
+        assert response.timings.extraction_ms >= 0.0
+        assert response.timings.total_ms >= 0.0

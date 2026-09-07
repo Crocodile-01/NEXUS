@@ -108,7 +108,8 @@ def _build_redirect_event_hook() -> dict[str, list[Any]]:
     request object, so raising here aborts the redirect chain.
     """
 
-    def _check_redirect(response: httpx.Response) -> None:
+    async def _check_redirect(response: httpx.Response) -> None:
+        # HTTPX AsyncClient requires response event hooks to be async coroutines.
         if response.is_redirect:
             location = response.headers.get("location", "")
             try:

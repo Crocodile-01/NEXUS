@@ -132,6 +132,16 @@ class WebsiteIntelligenceReport(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
+class InvestigationTimings(BaseModel):
+    """Performance timing measurements for investigation lifecycle phases (in milliseconds)."""
+
+    target_validation_ms: float = 0.0
+    crawl_ms: float = 0.0
+    extraction_ms: float = 0.0
+    enrichment_ms: float = 0.0
+    total_ms: float = 0.0
+
+
 class WebsiteInvestigationRequest(BaseModel):
     """Payload for POST /api/v1/investigations/website."""
 
@@ -153,4 +163,5 @@ class WebsiteInvestigationResponse(BaseModel):
     evidence_count: int
     entities_count: int
     relationships_count: int
+    timings: InvestigationTimings = Field(default_factory=InvestigationTimings)
     report: WebsiteIntelligenceReport

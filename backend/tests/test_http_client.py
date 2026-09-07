@@ -68,47 +68,53 @@ def _make_redirect_response(location: str) -> httpx.Response:
     )
 
 
-def test_redirect_hook_blocks_loopback():
+@pytest.mark.asyncio
+async def test_redirect_hook_blocks_loopback():
     hooks = _build_redirect_event_hook()
     check_fn = hooks["response"][0]
     response = _make_redirect_response("http://127.0.0.1/secret")
     with pytest.raises(SSRFError, match="blocked"):
-        check_fn(response)
+        await check_fn(response)
 
 
-def test_redirect_hook_blocks_rfc1918():
+@pytest.mark.asyncio
+async def test_redirect_hook_blocks_rfc1918():
     hooks = _build_redirect_event_hook()
     check_fn = hooks["response"][0]
     response = _make_redirect_response("http://192.168.0.1/admin")
     with pytest.raises(SSRFError, match="blocked"):
-        check_fn(response)
+        await check_fn(response)
 
 
-def test_redirect_hook_blocks_link_local():
+@pytest.mark.asyncio
+async def test_redirect_hook_blocks_link_local():
     hooks = _build_redirect_event_hook()
     check_fn = hooks["response"][0]
     response = _make_redirect_response("http://169.254.169.254/latest/meta-data/")
     with pytest.raises(SSRFError, match="blocked"):
-        check_fn(response)
+        await check_fn(response)
 
 
-def test_redirect_hook_blocks_non_http_scheme():
+@pytest.mark.asyncio
+async def test_redirect_hook_blocks_non_http_scheme():
     hooks = _build_redirect_event_hook()
     check_fn = hooks["response"][0]
     response = _make_redirect_response("ftp://example.com/file.txt")
     with pytest.raises(SSRFError, match="scheme"):
-        check_fn(response)
+        await check_fn(response)
 
 
-def test_redirect_hook_allows_public_redirect():
+@pytest.mark.asyncio
+async def test_redirect_hook_allows_public_redirect():
     hooks = _build_redirect_event_hook()
     check_fn = hooks["response"][0]
     response = _make_redirect_response("https://public.example.com/new-path")
     # Should not raise
-    check_fn(response)
+    await check_fn(response)
 
 
-def test_redirect_hook_does_not_fire_on_non_redirect():
+@pytest.mark.asyncio
+async def test_redirect_hook_does_not_fire_on_non_redirect():
     """The hook must be a no-op for non-redirect responses."""
     hooks = _build_redirect_event_hook()
     check_fn = hooks["response"][0]
@@ -118,7 +124,7 @@ def test_redirect_hook_does_not_fire_on_non_redirect():
         request=httpx.Request("GET", "https://example.com"),
     )
     # Should not raise
-    check_fn(response)
+    await check_fn(response)
 
 
 # ---------------------------------------------------------------------------
