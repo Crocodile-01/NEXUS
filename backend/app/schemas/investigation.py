@@ -25,6 +25,7 @@ class InvestigationCreate(BaseModel):
     max_depth: int = Field(default=3, ge=0, le=5)
     max_tasks: int = Field(default=50, ge=1, le=200)
     mode: str = Field(default="PASSIVE_PUBLIC", description="PASSIVE_PUBLIC or AUTHORIZED_SECURITY_ASSESSMENT")
+    auto_execute: bool = Field(default=False, description="Automatically trigger initial manager step upon creation")
 
 
 class InvestigationUpdate(BaseModel):

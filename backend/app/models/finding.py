@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Float, ForeignKey, String, Text
@@ -31,7 +31,7 @@ class Finding(Base):
     confidence_score: Mapped[float] = mapped_column(Float, default=0.5)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     investigation: Mapped["Investigation"] = relationship("Investigation", back_populates="findings")

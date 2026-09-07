@@ -1,4 +1,7 @@
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models import Entity, Evidence, Relationship, Source
 from app.services.entity_resolution import resolve_entity
 from app.services.evidence_engine import persist_source_result
@@ -8,8 +11,6 @@ from app.sources.base import (
     RawEvidence,
     SourceResult,
 )
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio

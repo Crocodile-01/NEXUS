@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
@@ -30,7 +30,7 @@ class ToolExecution(Base):
     execution_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     executed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     task: Mapped["InvestigationTask | None"] = relationship("InvestigationTask", back_populates="tool_executions")

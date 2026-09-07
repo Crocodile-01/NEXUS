@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from app.sources.adapters.arxiv import ArxivAdapter
 from app.sources.adapters.crt_sh import CrtShAdapter
 from app.sources.adapters.sec_edgar import SecEdgarAdapter

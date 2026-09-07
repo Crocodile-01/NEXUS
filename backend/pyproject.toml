@@ -20,6 +20,7 @@ dependencies = [
     "trafilatura>=1.8.0",
     "lxml_html_clean>=0.1.0",
     "rapidfuzz>=3.6.0",
+    "openai-agents>=0.22.0",
 ]
 
 [project.optional-dependencies]
