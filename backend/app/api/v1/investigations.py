@@ -17,6 +17,10 @@ from app.schemas.investigation import (
     InvestigationRead,
 )
 from app.security.execution_scope import ExecutionMode, ExecutionScope
+from app.services.website_intelligence.schemas import (
+    WebsiteInvestigationRequest,
+    WebsiteInvestigationResponse,
+)
 
 router = APIRouter(prefix="/investigations", tags=["Investigations"])
 
@@ -73,6 +77,34 @@ async def create_investigation(
         .where(Investigation.id == investigation.id)
     )
     return result.scalar_one()
+
+
+@router.post(
+    "/website",
+    response_model=WebsiteInvestigationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Execute bounded website and domain intelligence research",
+)
+async def investigate_website_endpoint(
+    payload: WebsiteInvestigationRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    from app.services.website_intelligence.service import WebsiteIntelligenceService
+
+    try:
+        return await WebsiteIntelligenceService.investigate_website(
+            target=payload.target,
+            objective=payload.objective,
+            max_pages=payload.max_pages,
+            enrich=payload.enrich,
+            db=db,
+        )
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(val_err),
+        ) from val_err
+
 
 
 @router.post("/{investigation_id}/execute", response_model=AgentRunResult, summary="Execute manager step on an investigation")
