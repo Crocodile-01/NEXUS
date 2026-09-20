@@ -4,9 +4,6 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.evidence import Evidence
 from app.models.investigation import Investigation
 from app.models.task import InvestigationTask
@@ -16,6 +13,8 @@ from app.sources.base import ExtractedEntity, RawEvidence, SourceResult
 from app.tools.base import RegisteredTool, ToolRequest, ToolResult
 from app.tools.boundary import ToolExecutionBoundary
 from app.tools.registry import tool_registry
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio

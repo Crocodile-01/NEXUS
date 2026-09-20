@@ -1,6 +1,6 @@
 """
 NEXUS Interactive Demo — Standalone HTML user interface for testing and
-demonstrating Website / Domain Intelligence capabilities.
+demonstrating Website Reconnaissance and Intelligence Engine 1.0 capabilities.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ DEMO_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEXUS — Website Intelligence Demo</title>
+  <title>NEXUS — Intelligence Engine Demo</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -85,11 +85,11 @@ DEMO_HTML = """<!DOCTYPE html>
     }
     .form-grid {
       display: grid;
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: 1fr auto auto auto auto;
       gap: 12px;
       align-items: end;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
       .form-grid { grid-template-columns: 1fr; }
     }
     label {
@@ -111,14 +111,6 @@ DEMO_HTML = """<!DOCTYPE html>
     }
     input[type="text"]:focus, select:focus, input[type="number"]:focus {
       border-color: var(--accent);
-    }
-    .checkbox-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 0;
-      font-size: 14px;
-      cursor: pointer;
     }
     button {
       background: var(--accent);
@@ -158,19 +150,30 @@ DEMO_HTML = """<!DOCTYPE html>
     .chip:hover { border-color: var(--accent); }
     .status-bar {
       display: none;
-      padding: 12px;
+      padding: 12px 16px;
       border-radius: 6px;
       margin-bottom: 20px;
       font-size: 14px;
     }
-    .status-bar.loading { display: flex; align-items: center; gap: 12px; background: #1c2738; border: 1px solid #2b4c7e; color: #79c0ff; }
-    .status-bar.error { display: block; background: #351515; border: 1px solid #6e2525; color: #ff7b72; }
+    .status-bar.loading {
+      background: #1f2937;
+      border: 1px solid #3b82f6;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-bar.error {
+      background: #3c1618;
+      border: 1px solid var(--danger);
+      color: #fca5a5;
+    }
     .spinner {
-      border: 2px solid rgba(121, 192, 255, 0.2);
-      border-left-color: var(--accent);
-      border-radius: 50%;
       width: 18px;
       height: 18px;
+      border: 2px solid rgba(147, 197, 253, 0.3);
+      border-top-color: #93c5fd;
+      border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -251,17 +254,38 @@ DEMO_HTML = """<!DOCTYPE html>
       font-size: 11px;
       font-weight: 600;
     }
-    .badge-high { background: #238636; color: #fff; }
-    .badge-inferred { background: #9e6a03; color: #fff; }
-    .badge-unverified { background: #6e7681; color: #fff; }
+    .badge-fact { background: #1f3a24; color: #3fb950; border: 1px solid #238636; }
+    .badge-inference { background: #382c16; color: #d29922; border: 1px solid #9e6a03; }
+    .badge-unverified { background: #3a1d1d; color: #f85149; border: 1px solid #da3633; }
+    .badge-corroborated { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; font-size: 10px; margin-left: 6px; padding: 1px 5px; border-radius: 3px; }
+    .chain-box {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-left: 3px solid #58a6ff;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #79c0ff;
+    }
+    .gap-item {
+      padding: 6px 12px;
+      background: #1c2128;
+      border-left: 3px solid #d29922;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
     .tab-nav {
       display: flex;
       border-bottom: 1px solid var(--border);
       margin-bottom: 16px;
-      gap: 8px;
+      gap: 4px;
+      overflow-x: auto;
     }
     .tab-btn {
-      background: none;
+      background: transparent;
       border: none;
       color: var(--text-muted);
       padding: 8px 16px;
@@ -269,6 +293,7 @@ DEMO_HTML = """<!DOCTYPE html>
       cursor: pointer;
       border-bottom: 2px solid transparent;
       border-radius: 0;
+      white-space: nowrap;
     }
     .tab-btn.active {
       color: var(--accent);
@@ -292,7 +317,7 @@ DEMO_HTML = """<!DOCTYPE html>
   <div class="container">
     <header>
       <div class="logo">
-        <span>⚡ NEXUS</span> Website Intelligence
+        <span>⚡ NEXUS</span> Website Intelligence & Intelligence Engine
       </div>
       <div>
         <span class="badge-mode">Mode: PASSIVE_PUBLIC</span>
@@ -300,23 +325,27 @@ DEMO_HTML = """<!DOCTYPE html>
     </header>
 
     <div class="card">
-      <div class="card-title">🔍 Target Website / Domain Research</div>
+      <div class="card-title">🔍 Target Entity & Intelligence Research</div>
       <form id="investigateForm" onsubmit="event.preventDefault(); runInvestigation();">
         <div class="form-grid">
           <div>
-            <label for="targetInput">Target URL or Domain</label>
+            <label for="targetInput">Target (URL, Domain, or Name)</label>
             <input type="text" id="targetInput" placeholder="https://www.python.org" required value="https://www.python.org" />
           </div>
           <div>
-            <label for="maxPagesInput">Max Pages (1–10)</label>
-            <input type="number" id="maxPagesInput" min="1" max="10" value="2" />
+            <label for="engineModeSelect">Investigation Engine</label>
+            <select id="engineModeSelect">
+              <option value="intelligence" selected>Intelligence Engine 1.0 (Multi-Source)</option>
+              <option value="website">Website Recon (Vertical Slice)</option>
+            </select>
           </div>
           <div>
-            <label>&nbsp;</label>
-            <label class="checkbox-group">
-              <input type="checkbox" id="enrichInput" checked />
-              <span>OSINT Enrichment</span>
-            </label>
+            <label for="maxDepthInput">Max Depth</label>
+            <input type="number" id="maxDepthInput" min="1" max="4" value="2" />
+          </div>
+          <div>
+            <label for="maxQueriesInput">Max Queries</label>
+            <input type="number" id="maxQueriesInput" min="3" max="30" value="15" />
           </div>
           <div>
             <label>&nbsp;</label>
@@ -329,10 +358,10 @@ DEMO_HTML = """<!DOCTYPE html>
 
       <div class="examples">
         <span>Quick presets:</span>
-        <span class="chip" onclick="setTarget('https://www.python.org', 2, true)">python.org</span>
-        <span class="chip" onclick="setTarget('https://www.djangoproject.com', 2, true)">djangoproject.com</span>
-        <span class="chip" onclick="setTarget('https://example.com', 1, false)">example.com</span>
-        <span class="chip" onclick="setTarget('https://www.wikipedia.org', 1, true)">wikipedia.org</span>
+        <span class="chip" onclick="setTarget('https://www.python.org')">python.org</span>
+        <span class="chip" onclick="setTarget('https://www.djangoproject.com')">djangoproject.com</span>
+        <span class="chip" onclick="setTarget('https://example.com')">example.com</span>
+        <span class="chip" onclick="setTarget('https://www.wikipedia.org')">wikipedia.org</span>
       </div>
     </div>
 
@@ -350,82 +379,86 @@ DEMO_HTML = """<!DOCTYPE html>
           <div class="metric-val" id="metricDomain" style="font-size: 16px;">-</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Pages Crawled</div>
-          <div class="metric-val" id="metricEvidence">-</div>
+          <div class="metric-label">Corroborated Findings</div>
+          <div class="metric-val" id="metricCorroborated" style="color: var(--accent);">-</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Entities Discovered</div>
           <div class="metric-val" id="metricEntities">-</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Verified Findings</div>
-          <div class="metric-val" id="metricFindings">-</div>
+          <div class="metric-label">Relationships Discovered</div>
+          <div class="metric-val" id="metricRelationships">-</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Execution Time</div>
-          <div class="metric-val" id="metricTotalTime" style="color: var(--accent);">-</div>
+          <div class="metric-label">Sources Consulted</div>
+          <div class="metric-val" id="metricSources" style="font-size: 16px;">-</div>
         </div>
-      </div>
-
-      <!-- Timing Pills -->
-      <div class="card" style="padding: 12px 16px;">
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">LIFECYCLE TIMINGS</div>
-        <div class="timing-breakdown" id="timingContainer"></div>
       </div>
 
       <!-- Tab Navigation -->
       <div class="tab-nav">
-        <button class="tab-btn active" onclick="switchTab('summary')">Executive Summary</button>
-        <button class="tab-btn" onclick="switchTab('tech')">Technologies</button>
-        <button class="tab-btn" onclick="switchTab('findings')">Findings & Confidence</button>
-        <button class="tab-btn" onclick="switchTab('entities')">Entities & Relationships</button>
+        <button class="tab-btn active" onclick="switchTab('summary')">Executive Intelligence</button>
+        <button class="tab-btn" onclick="switchTab('findings')">Findings & Corroboration</button>
+        <button class="tab-btn" onclick="switchTab('graph')">Relationship Chains</button>
+        <button class="tab-btn" onclick="switchTab('tech')">Technology Stack</button>
+        <button class="tab-btn" onclick="switchTab('gaps')">Research Gaps</button>
         <button class="tab-btn" onclick="switchTab('raw')">Raw JSON</button>
       </div>
 
       <!-- Tab 1: Executive Summary -->
       <div id="tabSummary" class="card">
-        <div class="card-title">📝 Executive Summary</div>
-        <p id="summaryText" style="margin-bottom: 16px; font-size: 14px;"></p>
+        <div class="card-title">📝 Executive Summary & Intelligence Synthesis</div>
+        <p id="summaryText" style="margin-bottom: 16px; font-size: 14px; line-height: 1.6;"></p>
 
         <div class="card-title" style="margin-top: 16px;">🏢 Organization Profile</div>
         <div style="font-size: 13px; display: grid; grid-template-columns: 140px 1fr; gap: 8px;">
-          <span style="color: var(--text-muted);">Organization:</span><span id="orgName" style="font-weight: 600;"></span>
+          <span style="color: var(--text-muted);">Name:</span><span id="orgName" style="font-weight: 600;"></span>
           <span style="color: var(--text-muted);">Website:</span><span id="orgUrl"></span>
           <span style="color: var(--text-muted);">Description:</span><span id="orgDesc"></span>
-          <span style="color: var(--text-muted);">Sources:</span><span id="orgSources"></span>
+          <span style="color: var(--text-muted);">Aliases:</span><span id="orgAliases"></span>
         </div>
       </div>
 
-      <!-- Tab 2: Technologies -->
-      <div id="tabTech" class="card" style="display: none;">
-        <div class="card-title">⚙️ Detected Technologies</div>
-        <div class="tag-grid" id="techList"></div>
-      </div>
-
-      <!-- Tab 3: Findings -->
+      <!-- Tab 2: Findings -->
       <div id="tabFindings" class="card" style="display: none;">
-        <div class="card-title">🛡️ Verified Findings & Provenance</div>
+        <div class="card-title">🛡️ Key Findings & Corroboration Provenance</div>
         <table class="findings-table">
           <thead>
             <tr>
-              <th>Claim</th>
-              <th>Classification</th>
-              <th>Confidence</th>
+              <th style="width: 45%;">Claim</th>
+              <th style="width: 15%;">Classification</th>
+              <th style="width: 10%;">Confidence</th>
+              <th style="width: 30%;">Why / Corroborating Sources</th>
             </tr>
           </thead>
           <tbody id="findingsBody"></tbody>
         </table>
       </div>
 
-      <!-- Tab 4: Entities & Relationships -->
-      <div id="tabEntities" class="card" style="display: none;">
-        <div class="card-title">👥 Discovered Entities</div>
-        <div id="entitiesList" style="margin-bottom: 16px; font-size: 13px;"></div>
-        <div class="card-title">🔗 Discovered Relationships</div>
+      <!-- Tab 3: Relationship Graph & Chains -->
+      <div id="tabGraph" class="card" style="display: none;">
+        <div class="card-title">🔗 Discovered Multi-Hop Relationship Chains</div>
+        <div id="chainsContainer" style="margin-bottom: 16px;"></div>
+        <div class="card-title" style="margin-top: 16px;">🌐 Entity Relationships</div>
         <div id="relationshipsList" style="font-size: 13px;"></div>
       </div>
 
-      <!-- Tab 5: Raw JSON -->
+      <!-- Tab 4: Technologies -->
+      <div id="tabTech" class="card" style="display: none;">
+        <div class="card-title">⚙️ Detected Technologies</div>
+        <div class="tag-grid" id="techList" style="margin-bottom: 16px;"></div>
+        <div class="card-title" style="margin-top: 16px;">🌐 Digital Infrastructure & Subdomains</div>
+        <div id="infrastructureList" style="font-size: 13px;"></div>
+      </div>
+
+      <!-- Tab 5: Research Gaps -->
+      <div id="tabGaps" class="card" style="display: none;">
+        <div class="card-title">⚠️ Identified Research Gaps & Unverified Dimensions</div>
+        <div id="gapsList"></div>
+      </div>
+
+      <!-- Tab 6: Raw JSON -->
       <div id="tabRaw" class="card" style="display: none;">
         <div class="card-title">📦 Complete API Response</div>
         <pre id="rawJson"></pre>
@@ -434,21 +467,20 @@ DEMO_HTML = """<!DOCTYPE html>
   </div>
 
   <script>
-    function setTarget(url, maxPages, enrich) {
+    function setTarget(url) {
       document.getElementById('targetInput').value = url;
-      document.getElementById('maxPagesInput').value = maxPages;
-      document.getElementById('enrichInput').checked = enrich;
     }
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('#tabSummary, #tabTech, #tabFindings, #tabEntities, #tabRaw').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('#tabSummary, #tabFindings, #tabGraph, #tabTech, #tabGaps, #tabRaw').forEach(el => el.style.display = 'none');
       
       const tabMap = {
         'summary': 'tabSummary',
-        'tech': 'tabTech',
         'findings': 'tabFindings',
-        'entities': 'tabEntities',
+        'graph': 'tabGraph',
+        'tech': 'tabTech',
+        'gaps': 'tabGaps',
         'raw': 'tabRaw'
       };
       
@@ -458,8 +490,9 @@ DEMO_HTML = """<!DOCTYPE html>
 
     async function runInvestigation() {
       const target = document.getElementById('targetInput').value.trim();
-      const maxPages = parseInt(document.getElementById('maxPagesInput').value, 10) || 2;
-      const enrich = document.getElementById('enrichInput').checked;
+      const engineMode = document.getElementById('engineModeSelect').value;
+      const maxDepth = parseInt(document.getElementById('maxDepthInput').value, 10) || 2;
+      const maxQueries = parseInt(document.getElementById('maxQueriesInput').value, 10) || 15;
       
       const submitBtn = document.getElementById('submitBtn');
       const btnText = document.getElementById('btnText');
@@ -469,19 +502,33 @@ DEMO_HTML = """<!DOCTYPE html>
       submitBtn.disabled = true;
       btnText.textContent = 'Investigating...';
       statusBar.className = 'status-bar loading';
-      statusBar.innerHTML = '<div class="spinner"></div><span>Crawling target, extracting DOM evidence, passively detecting tech stack, and querying public OSINT...</span>';
+      statusBar.innerHTML = '<div class="spinner"></div><span>Formulating research questions, orchestrating multi-source collection, expanding entities, and verifying corroboration...</span>';
       statusBar.style.display = 'flex';
       resultsSection.style.display = 'none';
 
       try {
-        const response = await fetch('/api/v1/investigations/website', {
+        let endpoint = '/api/v1/investigations/intelligence';
+        let payload = {
+          target: target,
+          target_type: "domain",
+          max_depth: maxDepth,
+          max_source_queries: maxQueries,
+          allow_expansion: true
+        };
+
+        if (engineMode === 'website') {
+          endpoint = '/api/v1/investigations/website';
+          payload = {
+            target: target,
+            max_pages: maxDepth,
+            enrich: true
+          };
+        }
+
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            target: target,
-            max_pages: maxPages,
-            enrich: enrich
-          })
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -490,7 +537,7 @@ DEMO_HTML = """<!DOCTYPE html>
         }
 
         const data = await response.json();
-        renderResults(data);
+        renderResults(data, engineMode);
         statusBar.style.display = 'none';
         resultsSection.style.display = 'block';
       } catch (err) {
@@ -503,93 +550,109 @@ DEMO_HTML = """<!DOCTYPE html>
       }
     }
 
-    function renderResults(data) {
-      document.getElementById('metricStatus').textContent = data.status.toUpperCase();
+    function renderResults(data, mode) {
+      document.getElementById('metricStatus').textContent = (data.status || 'COMPLETED').toUpperCase();
       document.getElementById('metricStatus').style.color = data.status === 'completed' ? 'var(--success)' : 'var(--danger)';
-      document.getElementById('metricDomain').textContent = data.canonical_domain;
-      document.getElementById('metricEvidence').textContent = data.evidence_count;
-      document.getElementById('metricEntities').textContent = data.entities_count;
-      document.getElementById('metricFindings').textContent = data.findings_count;
-      
-      const timings = data.timings || {};
-      document.getElementById('metricTotalTime').textContent = `${(timings.total_ms || 0).toFixed(0)} ms`;
+      document.getElementById('metricDomain').textContent = data.canonical_domain || data.target;
+      document.getElementById('metricCorroborated').textContent = data.corroborated_findings_count || (data.findings_count || 0);
+      document.getElementById('metricEntities').textContent = data.entities_count || 0;
+      document.getElementById('metricRelationships').textContent = data.relationships_count || 0;
+      document.getElementById('metricSources').textContent = (data.sources_consulted || []).length;
 
-      // Timings pills
-      document.getElementById('timingContainer').innerHTML = `
-        <div class="timing-pill">Validation: <span>${timings.target_validation_ms || 0} ms</span></div>
-        <div class="timing-pill">Crawl & Fetch: <span>${timings.crawl_ms || 0} ms</span></div>
-        <div class="timing-pill">DOM & Entity Extraction: <span>${timings.extraction_ms || 0} ms</span></div>
-        <div class="timing-pill">OSINT Enrichment: <span>${timings.enrichment_ms || 0} ms</span></div>
-        <div class="timing-pill">Total Duration: <span>${timings.total_ms || 0} ms</span></div>
-      `;
-
-      // Report content
       const r = data.report || {};
-      document.getElementById('summaryText').textContent = r.executive_summary || 'No summary available.';
+      document.getElementById('summaryText').textContent = r.executive_intelligence || r.executive_summary || 'No summary available.';
       
-      const org = r.organization_profile || {};
+      const org = r.target_profile || r.organization_profile || {};
       document.getElementById('orgName').textContent = org.name || '-';
       document.getElementById('orgUrl').textContent = org.website_url || '-';
       document.getElementById('orgDesc').textContent = org.description || 'N/A';
-      document.getElementById('orgSources').textContent = (r.sources_consulted || []).join(', ') || 'Direct DOM';
+      document.getElementById('orgAliases').textContent = (org.aliases || []).join(', ') || 'None observed';
 
-      // Technologies
-      const techList = document.getElementById('techList');
-      techList.innerHTML = '';
-      if (r.technologies && r.technologies.length > 0) {
-        r.technologies.forEach(t => {
-          techList.innerHTML += `
-            <div class="tech-tag">
-              <span class="tech-cat">${t.category}</span>
-              <strong>${t.name}</strong>
-              <span class="tech-conf">${(t.confidence * 100).toFixed(0)}% conf</span>
-            </div>
-          `;
+      // Discovered Chains
+      const chainsContainer = document.getElementById('chainsContainer');
+      chainsContainer.innerHTML = '';
+      const chains = org.discovered_relationship_chains || [];
+      if (chains.length > 0) {
+        chains.forEach(ch => {
+          chainsContainer.innerHTML += `<div class="chain-box">${ch}</div>`;
         });
       } else {
-        techList.innerHTML = '<span style="color: var(--text-muted);">No explicit technologies detected.</span>';
+        chainsContainer.innerHTML = '<span style="color: var(--text-muted);">No multi-hop chains observed.</span>';
+      }
+
+      // Relationships
+      const relsList = document.getElementById('relationshipsList');
+      relsList.innerHTML = '';
+      const rels = r.relationship_intelligence || r.relationships || [];
+      if (rels.length > 0) {
+        rels.slice(0, 15).forEach(rel => {
+          const s = rel.subject || rel.source_entity;
+          const p = rel.predicate || rel.relationship_type;
+          const o = rel.object || rel.target_entity;
+          relsList.innerHTML += `<div style="padding: 4px 0; border-bottom: 1px solid #21262d;"><strong>${s}</strong> → <em>${p}</em> → <strong>${o}</strong> <span style="color: var(--text-muted); font-size: 11px;">(${(rel.confidence * 100).toFixed(0)}% conf)</span></div>`;
+        });
       }
 
       // Findings
       const findingsBody = document.getElementById('findingsBody');
       findingsBody.innerHTML = '';
-      if (r.findings && r.findings.length > 0) {
-        r.findings.forEach(f => {
-          let badgeClass = 'badge-conf badge-high';
-          if (f.classification === 'INFERRED') badgeClass = 'badge-conf badge-inferred';
-          if (f.classification === 'UNVERIFIED') badgeClass = 'badge-conf badge-unverified';
-          findingsBody.innerHTML += `
-            <tr>
-              <td>${f.claim}</td>
-              <td><span class="${badgeClass}">${f.classification}</span></td>
-              <td>${(f.confidence_score * 100).toFixed(0)}%</td>
-            </tr>
+      const findings = r.key_findings || r.findings || [];
+      findings.forEach(f => {
+        let badgeClass = 'badge-unverified';
+        const clsVal = (f.classification && f.classification.value) ? f.classification.value : f.classification;
+        if (clsVal === 'FACT') badgeClass = 'badge-fact';
+        else if (clsVal === 'SUPPORTED_INFERENCE') badgeClass = 'badge-inference';
+
+        const corroborationTag = f.is_corroborated ? '<span class="badge-corroborated">CORROBORATED</span>' : '';
+        const whyNote = f.why || f.supporting_snippet || 'N/A';
+
+        findingsBody.innerHTML += `
+          <tr>
+            <td><strong>${f.claim}</strong></td>
+            <td><span class="badge-conf ${badgeClass}">${clsVal}</span>${corroborationTag}</td>
+            <td>${((f.confidence_score || f.confidence || 0) * 100).toFixed(0)}%</td>
+            <td style="color: var(--text-muted); font-size: 12px;">${whyNote}</td>
+          </tr>
+        `;
+      });
+
+      // Technologies
+      const techList = document.getElementById('techList');
+      techList.innerHTML = '';
+      const techs = r.technology_intelligence || r.technologies || [];
+      if (techs.length > 0) {
+        techs.forEach(t => {
+          techList.innerHTML += `
+            <div class="tech-tag">
+              <span class="tech-cat">${t.category}</span>
+              <strong>${t.name}</strong>
+              <span class="tech-conf">${(t.confidence * 100).toFixed(0)}%</span>
+            </div>
           `;
         });
-      } else {
-        findingsBody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted);">No findings produced.</td></tr>';
       }
 
-      // Entities
-      const entitiesList = document.getElementById('entitiesList');
-      entitiesList.innerHTML = '';
-      if (r.people_and_organizations && r.people_and_organizations.length > 0) {
-        r.people_and_organizations.slice(0, 15).forEach(e => {
-          entitiesList.innerHTML += `<div style="padding: 4px 0;">• <strong>${e.name}</strong> <span style="color: var(--text-muted);">(${e.entity_type}${e.role_or_title ? ' - ' + e.role_or_title : ''})</span></div>`;
-        });
+      // Digital Infrastructure
+      const infraList = document.getElementById('infrastructureList');
+      infraList.innerHTML = '';
+      const infra = r.digital_infrastructure || {};
+      const subs = infra.subdomains || [];
+      if (subs.length > 0) {
+        infraList.innerHTML = `<strong>Observed Subdomains (${subs.length}):</strong> ` + subs.join(', ');
       } else {
-        entitiesList.innerHTML = '<span style="color: var(--text-muted);">No entities extracted.</span>';
+        infraList.innerHTML = '<span style="color: var(--text-muted);">No public subdomains recorded.</span>';
       }
 
-      // Relationships
-      const relationshipsList = document.getElementById('relationshipsList');
-      relationshipsList.innerHTML = '';
-      if (r.relationships && r.relationships.length > 0) {
-        r.relationships.slice(0, 15).forEach(rel => {
-          relationshipsList.innerHTML += `<div style="padding: 4px 0;">• <strong>${rel.source_entity}</strong> → <em>${rel.relationship_type}</em> → <strong>${rel.target_entity}</strong> <span style="color: var(--text-muted);">(${rel.supporting_evidence || ''})</span></div>`;
+      // Research Gaps
+      const gapsList = document.getElementById('gapsList');
+      gapsList.innerHTML = '';
+      const gaps = r.research_gaps || [];
+      if (gaps.length > 0) {
+        gaps.forEach(g => {
+          gapsList.innerHTML += `<div class="gap-item">⚠️ ${g}</div>`;
         });
       } else {
-        relationshipsList.innerHTML = '<span style="color: var(--text-muted);">No relationships extracted.</span>';
+        gapsList.innerHTML = '<div style="color: var(--success);">No major research gaps identified.</div>';
       }
 
       // Raw JSON
@@ -601,8 +664,6 @@ DEMO_HTML = """<!DOCTYPE html>
 """
 
 
-@router.get("/demo", response_class=HTMLResponse, summary="Interactive Website Intelligence Demo UI")
-@router.get("/demo/", response_class=HTMLResponse, include_in_schema=False)
-async def demo_page() -> HTMLResponse:
-    """Serve standalone interactive HTML demonstration for Website Intelligence."""
-    return HTMLResponse(content=DEMO_HTML)
+@router.get("/demo", response_class=HTMLResponse, summary="Serve interactive demo UI")
+async def get_demo_ui():
+    return HTMLResponse(content=DEMO_HTML, status_code=200)

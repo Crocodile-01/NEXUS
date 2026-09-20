@@ -1,7 +1,4 @@
 import pytest
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import (
     Entity,
     EntityAlias,
@@ -10,6 +7,8 @@ from app.models import (
     InvestigationTask,
     Source,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio

@@ -3,10 +3,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from httpx import AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.agents.manager import InvestigationManager
 from app.agents.schemas import FindingClassification
 from app.models.agent_run import AgentRun
@@ -20,6 +16,9 @@ from app.sources.base import (
     RawEvidence,
     SourceResult,
 )
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio

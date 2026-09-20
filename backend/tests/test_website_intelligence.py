@@ -3,10 +3,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from httpx import AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.agent_run import AgentRun
 from app.models.finding import Finding
 from app.models.investigation import Investigation
@@ -20,6 +16,9 @@ from app.sources.base import (
     ExtractedEntity,
     SourceResult,
 )
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 HTML_SAMPLE_HOMEPAGE = """
 <!DOCTYPE html>

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import httpx
 import pytest
-
 from app.sources.http_client import (
     MAX_REDIRECTS,
     SSRFError,

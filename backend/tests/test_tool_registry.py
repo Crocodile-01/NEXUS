@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.security.execution_scope import ExecutionMode
 from app.tools.base import RegisteredTool, ToolRequest, ToolResult
 from app.tools.registry import ToolRegistry, tool_registry

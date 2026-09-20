@@ -17,6 +17,10 @@ from app.schemas.investigation import (
     InvestigationRead,
 )
 from app.security.execution_scope import ExecutionMode, ExecutionScope
+from app.services.intelligence_engine.schemas import (
+    IntelligenceInvestigationRequest,
+    IntelligenceInvestigationResponse,
+)
 from app.services.website_intelligence.schemas import (
     WebsiteInvestigationRequest,
     WebsiteInvestigationResponse,
@@ -97,6 +101,30 @@ async def investigate_website_endpoint(
             objective=payload.objective,
             max_pages=payload.max_pages,
             enrich=payload.enrich,
+            db=db,
+        )
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(val_err),
+        ) from val_err
+
+
+@router.post(
+    "/intelligence",
+    response_model=IntelligenceInvestigationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Execute bounded multi-source intelligence investigation",
+)
+async def investigate_intelligence_endpoint(
+    payload: IntelligenceInvestigationRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    from app.services.intelligence_engine.service import IntelligenceEngineService
+
+    try:
+        return await IntelligenceEngineService.investigate(
+            request=payload,
             db=db,
         )
     except ValueError as val_err:
